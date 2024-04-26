@@ -23,3 +23,5 @@ TEMP
 # 文件
 *.whl
 *.rar
+custom.py
+sovits-lite.yaml

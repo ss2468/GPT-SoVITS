@@ -9,10 +9,8 @@ gradio_client==0.8.1
 ffmpeg-python
 onnxruntime
 tqdm
-funasr==1.0.0
 cn2an
 pypinyin
-pyopenjtalk
 g2p_en
 torchaudio
 modelscope==1.10.0
@@ -21,8 +19,12 @@ transformers
 chardet
 PyYAML
 psutil
-jieba_fast
 jieba
 LangSegment>=0.2.0
 Faster_Whisper
 wordsegment
+
+# 手动安装
+# funasr==1.0.0
+# pyopenjtalk
+# jieba_fast

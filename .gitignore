@@ -23,5 +23,6 @@ TEMP
 # 文件
 *.whl
 *.rar
+*.exe
 custom.py
 sovits-lite.yaml

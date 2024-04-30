@@ -1,27 +1,44 @@
-import os
-import traceback,gradio as gr
 import logging
+import os
+import traceback
+
+import gradio as gr
+
 from tools.i18n.i18n import I18nAuto
+
 i18n = I18nAuto()
 
 logger = logging.getLogger(__name__)
-import librosa,ffmpeg
-import soundfile as sf
+import ffmpeg
 import torch
 import sys
 from mdxnet import MDXNetDereverb
 from vr import AudioPre, AudioPreDeEcho
 
-weight_uvr5_root = "tools/uvr5/uvr5_weights"
+# todo 切换-路径
+def switch_path(path: str):
+    if "UntitledProjects" in os.getcwd():
+        return f"C:/Users/Administrator/UntitledProjects/GPT-SoVITS/{path}"
+    else:
+        return path
+
+weight_uvr5_root = switch_path("tools/uvr5/uvr5_weights")
 uvr5_names = []
 for name in os.listdir(weight_uvr5_root):
     if name.endswith(".pth") or "onnx" in name:
         uvr5_names.append(name.replace(".pth", ""))
 
-device=sys.argv[1]
-is_half=eval(sys.argv[2])
-webui_port_uvr5=int(sys.argv[3])
-is_share=eval(sys.argv[4])
+# todo 切换-启动参数
+if "UntitledProjects" in os.getcwd():
+    device = "cpu"
+    is_half = False
+    webui_port_uvr5 = 9873
+    is_share = False
+else:
+    device = sys.argv[1]
+    is_half = eval(sys.argv[2])
+    webui_port_uvr5 = int(sys.argv[3])
+    is_share = eval(sys.argv[4])
 
 def uvr(model_name, inp_root, save_root_vocal, paths, save_root_ins, agg, format0):
     infos = []
@@ -50,18 +67,18 @@ def uvr(model_name, inp_root, save_root_vocal, paths, save_root_ins, agg, format
             paths = [path.name for path in paths]
         for path in paths:
             inp_path = os.path.join(inp_root, path)
-            if(os.path.isfile(inp_path)==False):continue
+            if (os.path.isfile(inp_path) == False): continue
             need_reformat = 1
             done = 0
             try:
                 info = ffmpeg.probe(inp_path, cmd="ffprobe")
                 if (
-                    info["streams"][0]["channels"] == 2
-                    and info["streams"][0]["sample_rate"] == "44100"
+                        info["streams"][0]["channels"] == 2
+                        and info["streams"][0]["sample_rate"] == "44100"
                 ):
                     need_reformat = 0
                     pre_fun._path_audio_(
-                        inp_path, save_root_ins, save_root_vocal, format0,is_hp3
+                        inp_path, save_root_ins, save_root_vocal, format0, is_hp3
                     )
                     done = 1
             except:
@@ -79,7 +96,7 @@ def uvr(model_name, inp_root, save_root_vocal, paths, save_root_ins, agg, format
             try:
                 if done == 0:
                     pre_fun._path_audio_(
-                        inp_path, save_root_ins, save_root_vocal, format0,is_hp3
+                        inp_path, save_root_ins, save_root_vocal, format0, is_hp3
                     )
                 infos.append("%s->Success" % (os.path.basename(inp_path)))
                 yield "\n".join(infos)
@@ -106,10 +123,11 @@ def uvr(model_name, inp_root, save_root_vocal, paths, save_root_ins, agg, format
             torch.cuda.empty_cache()
     yield "\n".join(infos)
 
+# todo gradio
 with gr.Blocks(title="UVR5 WebUI") as app:
     gr.Markdown(
         value=
-            i18n("本软件以MIT协议开源, 作者不对软件具备任何控制力, 使用软件者、传播软件导出的声音者自负全责. <br>如不认可该条款, 则不能使用或引用软件包内任何代码和文件. 详见根目录<b>LICENSE</b>.")
+        i18n("本软件以MIT协议开源, 作者不对软件具备任何控制力, 使用软件者、传播软件导出的声音者自负全责. <br>如不认可该条款, 则不能使用或引用软件包内任何代码和文件. 详见根目录<b>LICENSE</b>.")
     )
     with gr.Tabs():
         with gr.TabItem(i18n("伴奏人声分离&去混响&去回声")):
@@ -123,12 +141,13 @@ with gr.Blocks(title="UVR5 WebUI") as app:
                     with gr.Column():
                         dir_wav_input = gr.Textbox(
                             label=i18n("输入待处理音频文件夹路径"),
-                            placeholder="C:\\Users\\Desktop\\todo-songs",
+                            value=switch_path("demo/input"),
                         )
                         wav_inputs = gr.File(
                             file_count="multiple", label=i18n("也可批量输入音频文件, 二选一, 优先读文件夹")
                         )
                     with gr.Column():
+                        # todo uvr5模型（tools/uvr5/uvr5_weights）
                         model_choose = gr.Dropdown(label=i18n("模型"), choices=uvr5_names)
                         agg = gr.Slider(
                             minimum=0,
@@ -140,10 +159,10 @@ with gr.Blocks(title="UVR5 WebUI") as app:
                             visible=False,  # 先不开放调整
                         )
                         opt_vocal_root = gr.Textbox(
-                            label=i18n("指定输出主人声文件夹"), value="output/uvr5_opt"
+                            label=i18n("指定输出主人声文件夹"), value=switch_path("output/uvr5_opt")
                         )
                         opt_ins_root = gr.Textbox(
-                            label=i18n("指定输出非主人声文件夹"), value="output/uvr5_opt"
+                            label=i18n("指定输出非主人声文件夹"), value=switch_path("output/uvr5_opt")
                         )
                         format0 = gr.Radio(
                             label=i18n("导出文件格式"),
@@ -153,6 +172,7 @@ with gr.Blocks(title="UVR5 WebUI") as app:
                         )
                     but2 = gr.Button(i18n("转换"), variant="primary")
                     vc_output4 = gr.Textbox(label=i18n("输出信息"))
+                    # todo 执行转换
                     but2.click(
                         uvr,
                         [
@@ -167,6 +187,7 @@ with gr.Blocks(title="UVR5 WebUI") as app:
                         [vc_output4],
                         api_name="uvr_convert",
                     )
+
 app.queue(concurrency_count=511, max_size=1022).launch(
     server_name="0.0.0.0",
     inbrowser=True,
